@@ -3,11 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.S3;
@@ -29,7 +25,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
         private string _status;
         private readonly AmazonS3Client _client;
         private CancellationTokenSource _tokenSource;
-        private string _prefix;
+        private readonly string _prefix;
 
         public AwsProvider()
         {
@@ -37,14 +33,13 @@ namespace WhyShare.Infrastructure.Provider.Aws
             AwsBucket = ConfigurationManager.AppSettings["AwsBucket"];
             _client = new AmazonS3Client(Amazon.RegionEndpoint.EUCentral1);
             _prefix = new DeviceIdBuilder()
-                .AddProcessorId()
                 .AddUserName()
                 .AddMotherboardSerialNumber()
                 .ToString();
+
             bw = new BackgroundWorker();
             bw.DoWork += Bw_DoWork;
         }
-
 
         private void Bw_DoWork(object sender, DoWorkEventArgs e)
         {
@@ -60,7 +55,6 @@ namespace WhyShare.Infrastructure.Provider.Aws
 
             using (var fileTransferUtility = new TransferUtility(_client))
             {
-
                 fileTransferUtility.UploadAsync(file.FullName, AwsBucket);
 
                 var uploadRequest =
@@ -83,12 +77,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
                             {
                                 Key = "UserName",
                                 Value = Environment.UserName
-                            },
-                            new Tag()
-                            {
-                                Key = "VersionString",
-                                Value = Environment.OSVersion.VersionString
-                            },
+                            }
                         }
                     };
 
@@ -147,8 +136,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             get
             {
-                FileInfo file = null;
-                file = new FileInfo(FileName);
+                var file = new FileInfo(FileName);
 
                 GetPreSignedUrlRequest requestOrg = new GetPreSignedUrlRequest
                 {
@@ -165,13 +153,11 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             var file = new FileInfo(FileName);
 
-            bool result = false;
-
-            DeleteObjectResponse deleteResponse;
+            var result = false;
 
             try
             {
-                deleteResponse = _client.DeleteObject(new DeleteObjectRequest()
+                var deleteResponse = _client.DeleteObject(new DeleteObjectRequest()
                 {
                     BucketName = AwsBucket,
                     Key = $"{_prefix}/{file.Name}",
@@ -191,11 +177,10 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             await Task.Run(() =>
             {
-                if (bw.IsBusy != true)
-                {
-                    _tokenSource = new CancellationTokenSource();
-                    bw.RunWorkerAsync();
-                }
+                if (bw.IsBusy) return;
+
+                _tokenSource = new CancellationTokenSource();
+                bw.RunWorkerAsync();
             });
         }
 

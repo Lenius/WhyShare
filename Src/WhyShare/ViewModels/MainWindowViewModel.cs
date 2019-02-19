@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Windows;
 using Prism.Commands;
 using Prism.Mvvm;
 using WhyShare.Infrastructure.Interfaces;
-using WhyShare.Infrastructure.Provider.Aws;
 
 namespace WhyShare.ViewModels
 {
@@ -17,7 +15,6 @@ namespace WhyShare.ViewModels
         public DelegateCommand<IWhyShare> OpenUrlCommand { get; set; }
         public DelegateCommand<IWhyShare> CancelUploadCommand { get; set; }
         public DelegateCommand<IWhyShare> DeleteObjectCommand { get; set; }
-
         public DelegateCommand<Window> ExitCommand { get; set; }
 
         public ObservableCollection<IWhyShare> S3Objects { get; set; }
@@ -33,13 +30,13 @@ namespace WhyShare.ViewModels
 
         public MainWindowViewModel()
         {
-            S3Objects = new ObservableCollection<IWhyShare>();
-            S3Objects.CollectionChanged += S3Objects_CollectionChanged;
-
             OpenUrlCommand = new DelegateCommand<IWhyShare>(OpenUrl, CanOpenUrl);
             CancelUploadCommand = new DelegateCommand<IWhyShare>(CancelUpload, CanCancelUpload);
             DeleteObjectCommand = new DelegateCommand<IWhyShare>(DeleteUpload, CanDeleteUpload);
             ExitCommand = new DelegateCommand<Window>(ExitApp, CanExitApp);
+
+            S3Objects = new ObservableCollection<IWhyShare>();
+            S3Objects.CollectionChanged += S3Objects_CollectionChanged;
         }
 
         private void DeleteUpload(IWhyShare obj)
@@ -52,7 +49,7 @@ namespace WhyShare.ViewModels
 
         private bool CanDeleteUpload(IWhyShare arg)
         {
-            bool result = false;
+            var result = false;
 
             if (arg != null)
             {
@@ -64,7 +61,7 @@ namespace WhyShare.ViewModels
 
         private bool CanCancelUpload(IWhyShare arg)
         {
-            bool result = false;
+            var result = false;
 
             if (arg != null)
             {
@@ -90,11 +87,19 @@ namespace WhyShare.ViewModels
             System.Diagnostics.Process.Start(url);
         }
 
-
-
-        private async void S3Objects_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private bool CanExitApp(Window w)
         {
-            //add new items
+            return true;
+        }
+
+        private void ExitApp(Window w)
+        {
+            w?.Close();
+        }
+
+        private async void S3Objects_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // add new items
             if (e.Action == NotifyCollectionChangedAction.Add)
             {
                 foreach (IWhyShare newItem in e.NewItems)
@@ -112,16 +117,6 @@ namespace WhyShare.ViewModels
             }
         }
 
-        private bool CanExitApp(Window w)
-        {
-            return true;
-        }
-
-        private void ExitApp(Window w)
-        {
-            w?.Close();
-        }
-
         public void Add(IWhyShare awsProvider)
         {
             S3Objects.Add(awsProvider);
@@ -129,7 +124,7 @@ namespace WhyShare.ViewModels
 
         public IWhyShare SelectedItem
         {
-            get { return _selectedItem; }
+            get => _selectedItem;
             set
             {
                 SelectedItemChanged = SelectedItemChanged + 1;
@@ -141,11 +136,8 @@ namespace WhyShare.ViewModels
 
         public int SelectedItemChanged
         {
-            get { return _selectedItemChanged; }
-            set
-            {
-                SetProperty(ref _selectedItemChanged, value);
-            }
+            get => _selectedItemChanged;
+            set => SetProperty(ref _selectedItemChanged, value);
         }
 
         public void Dispose()
