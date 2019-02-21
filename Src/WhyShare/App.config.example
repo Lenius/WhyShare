@@ -7,5 +7,7 @@
     <add key="AWSAccessKey" value="" />
     <add key="AWSSecretKey" value="" />
     <add key="AwsBucket" value="" />
+    <add key="BitlyUser" value="" />
+    <add key="BitlyKey" value="" />
   </appSettings>
 </configuration>
