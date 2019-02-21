@@ -1,7 +1,9 @@
-﻿using WhyShare.Views;
+﻿using System.Configuration;
+using WhyShare.Views;
 using Prism.Ioc;
-using Prism.Modularity;
 using System.Windows;
+using WhyShare.Infrastructure.Interfaces;
+using WhyShare.Infrastructure.Provider.ShortService.Bitly;
 
 namespace WhyShare
 {
@@ -17,7 +19,7 @@ namespace WhyShare
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
-
+            containerRegistry.RegisterInstance<IShortProvider>(new BitlyProvider(ConfigurationManager.AppSettings["BitlyUser"], ConfigurationManager.AppSettings["BitlyKey"]));
         }
     }
 }

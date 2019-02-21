@@ -6,10 +6,11 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using System.Web;
+using System.Windows.Threading;
 using DeviceId;
 using Prism.Mvvm;
 using WhyShare.Infrastructure.Interfaces;
@@ -18,33 +19,38 @@ namespace WhyShare.Infrastructure.Provider.Aws
 {
     public class AwsProvider : BindableBase, IDisposable, IWhyShare
     {
-        private BackgroundWorker bw;
+        private readonly BackgroundWorker _backgroundWorker;
+        private readonly AmazonS3Client _client;
+        private readonly string _prefix;
+        private readonly string _awsbucket;
+
         private string _fileName;
         private string _fileSize;
-        private int _process;
+        private string _shortUrl;
         private string _status;
-        private readonly AmazonS3Client _client;
+        private int _process;
+
         private CancellationTokenSource _tokenSource;
-        private readonly string _prefix;
 
         public AwsProvider()
         {
             _tokenSource = new CancellationTokenSource();
-            AwsBucket = ConfigurationManager.AppSettings["AwsBucket"];
+            _awsbucket = ConfigurationManager.AppSettings["AwsBucket"];
             _client = new AmazonS3Client(Amazon.RegionEndpoint.EUCentral1);
             _prefix = new DeviceIdBuilder()
                 .AddUserName()
                 .AddMotherboardSerialNumber()
                 .ToString();
 
-            bw = new BackgroundWorker();
-            bw.DoWork += Bw_DoWork;
+            _backgroundWorker = new BackgroundWorker();
+            _backgroundWorker.WorkerReportsProgress = true;
+            _backgroundWorker.DoWork += Bw_DoWork;
         }
 
         private void Bw_DoWork(object sender, DoWorkEventArgs e)
         {
             var file = new FileInfo(FileName);
-            FileSize = file.Length.ToString();
+            FileSize = Tools.SizeToHuman(file.Length);
             Status = "Uploading";
 
             var transferUtilityConfig = new TransferUtilityConfig
@@ -55,12 +61,12 @@ namespace WhyShare.Infrastructure.Provider.Aws
 
             using (var fileTransferUtility = new TransferUtility(_client))
             {
-                fileTransferUtility.UploadAsync(file.FullName, AwsBucket);
+                fileTransferUtility.UploadAsync(file.FullName, _awsbucket);
 
                 var uploadRequest =
                     new TransferUtilityUploadRequest
                     {
-                        BucketName = AwsBucket,
+                        BucketName = _awsbucket,
                         FilePath = file.FullName,
                         Key = $"{_prefix}/{file.Name}",
                         CannedACL = S3CannedACL.Private,
@@ -102,8 +108,6 @@ namespace WhyShare.Infrastructure.Provider.Aws
             }
         }
 
-        public string AwsBucket { get; set; }
-
         public string FileName
         {
             get => _fileName;
@@ -113,6 +117,8 @@ namespace WhyShare.Infrastructure.Provider.Aws
                 RaisePropertyChanged();
             }
         }
+
+        public IShortProvider ShortUrlProvider { get; set; }
 
         public int Process
         {
@@ -132,7 +138,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
             set { _fileSize = value; RaisePropertyChanged(); }
         }
 
-        public string GetUrl
+        public string Url
         {
             get
             {
@@ -140,12 +146,34 @@ namespace WhyShare.Infrastructure.Provider.Aws
 
                 GetPreSignedUrlRequest requestOrg = new GetPreSignedUrlRequest
                 {
-                    BucketName = AwsBucket,
+                    BucketName = _awsbucket,
                     Key = $"{_prefix}/{file.Name}",
-                    Expires = DateTime.Now.AddMinutes(60*24)
+                    Expires = DateTime.Now.AddMinutes(60 * 24)
                 };
 
                 return _client.GetPreSignedURL(requestOrg);
+            }
+        }
+
+        public string ShortUrl
+        {
+            get
+            {
+                if (_shortUrl == null)
+                {
+                    var file = new FileInfo(FileName);
+
+                    GetPreSignedUrlRequest requestOrg = new GetPreSignedUrlRequest
+                    {
+                        BucketName = _awsbucket,
+                        Key = $"{_prefix}/{file.Name}",
+                        Expires = DateTime.Now.AddMinutes(60 * 24)
+                    };
+
+                    _shortUrl = ShortUrlProvider.Url(_client.GetPreSignedURL(requestOrg));
+                }
+
+                return _shortUrl;
             }
         }
 
@@ -159,7 +187,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
             {
                 var deleteResponse = _client.DeleteObject(new DeleteObjectRequest()
                 {
-                    BucketName = AwsBucket,
+                    BucketName = _awsbucket,
                     Key = $"{_prefix}/{file.Name}",
                 });
 
@@ -177,10 +205,10 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             await Task.Run(() =>
             {
-                if (bw.IsBusy) return;
+                if (_backgroundWorker.IsBusy) return;
 
                 _tokenSource = new CancellationTokenSource();
-                bw.RunWorkerAsync();
+                _backgroundWorker.RunWorkerAsync();
             });
         }
 
@@ -188,7 +216,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             _tokenSource?.Cancel();
             _client?.Dispose();
-            bw?.Dispose();
+            _backgroundWorker?.Dispose();
         }
 
         public void CancelUpload()

@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using System.Windows;
-using WhyShare.Infrastructure.Provider.Aws;
 using WhyShare.ViewModels;
 
 namespace WhyShare.Views
@@ -27,7 +26,7 @@ namespace WhyShare.Views
             {
                 var info = new FileInfo(file);
                 var ext = info.Extension.ToLower();
-                //viewModel?.Add(new AwsProvider() { FileName = file });
+
                 if (ext.Equals(".bmp") ||
                     ext.Equals(".gif") ||
                     ext.Equals(".jpg") ||
@@ -37,7 +36,7 @@ namespace WhyShare.Views
                     ext.Equals(".pdf") ||
                     ext.Equals(".png"))
                 {
-                    viewModel?.Add(new AwsProvider() { FileName = file });
+                    viewModel?.Add(file);
                 }
             }
         }

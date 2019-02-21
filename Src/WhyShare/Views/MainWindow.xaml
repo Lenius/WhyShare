@@ -21,11 +21,24 @@
                 </StatusBarItem>
             </StatusBar>
 
-            <DataGrid  SelectionMode="Single" AllowDrop="true" CanUserDeleteRows="True" SelectedItem="{Binding SelectedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  CanUserAddRows="False" ItemsSource="{Binding S3Objects}" AutoGenerateColumns="False">
+            <DataGrid  SelectionMode="Single" AllowDrop="true" CanUserDeleteRows="True" SelectedItem="{Binding SelectedItem, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"  CanUserAddRows="False" ItemsSource="{Binding S3Objects}" AutoGenerateColumns="False">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="FileName" Width="*" Binding="{Binding FileName}" />
-                    <DataGridTextColumn Header="Size" Width="*" Binding="{Binding FileSize}" />
-                    <DataGridTextColumn Header="Status" Width="*" Binding="{Binding Status}" />
+                    <DataGridTemplateColumn Header="File" Width="90" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FileName}"></TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridHyperlinkColumn Header="Link" Width="130" Binding="{Binding Path=ShortUrl}">
+
+
+                    </DataGridHyperlinkColumn>
+
+
+                    <DataGridTextColumn Header="Size" Width="100" Binding="{Binding FileSize}" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Status" Width="100" Binding="{Binding Status}" IsReadOnly="True"/>
                     <DataGridTemplateColumn Header="Process" Width="*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -37,6 +50,7 @@
                 <DataGrid.ContextMenu>
                     <ContextMenu >
                         <MenuItem Header="Url" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.SelectedItem}" />
+                        <MenuItem Header="ShortUrl" Command="{Binding OpenShortUrlCommand}" CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.SelectedItem}" />
                         <MenuItem Header="Afbrud upload" Command="{Binding CancelUploadCommand}" CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.SelectedItem}" />
                         <MenuItem Header="Slet" Command="{Binding DeleteObjectCommand}" CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.SelectedItem}" />
                     </ContextMenu>
@@ -45,7 +59,6 @@
                     <i:EventTrigger EventName="MouseDoubleClick">
                         <i:InvokeCommandAction Command="{Binding OpenUrlCommand}" CommandParameter="{Binding Path=SelectedItem, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}"/>
                     </i:EventTrigger>
-
                     <i:EventTrigger EventName="ContextMenuOpening">
                         <i:InvokeCommandAction Command="{Binding OpenContextCommand}"/>
                     </i:EventTrigger>

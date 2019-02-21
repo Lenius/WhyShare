@@ -4,7 +4,9 @@ using System.Collections.Specialized;
 using System.Windows;
 using Prism.Commands;
 using Prism.Mvvm;
+using Unity;
 using WhyShare.Infrastructure.Interfaces;
+using WhyShare.Infrastructure.Provider.Aws;
 
 namespace WhyShare.ViewModels
 {
@@ -13,6 +15,7 @@ namespace WhyShare.ViewModels
         private string _title = "WhyShare";
 
         public DelegateCommand<IWhyShare> OpenUrlCommand { get; set; }
+        public DelegateCommand<IWhyShare> OpenShortUrlCommand { get; set; }
         public DelegateCommand<IWhyShare> CancelUploadCommand { get; set; }
         public DelegateCommand<IWhyShare> DeleteObjectCommand { get; set; }
         public DelegateCommand<Window> ExitCommand { get; set; }
@@ -21,6 +24,7 @@ namespace WhyShare.ViewModels
 
         private IWhyShare _selectedItem;
         private int _selectedItemChanged;
+        private IShortProvider _shortProvider;
 
         public string Title
         {
@@ -28,15 +32,46 @@ namespace WhyShare.ViewModels
             set => SetProperty(ref _title, value);
         }
 
-        public MainWindowViewModel()
+        public MainWindowViewModel(IUnityContainer container)
         {
+
+            _shortProvider = container.Resolve<IShortProvider>();
+
+
             OpenUrlCommand = new DelegateCommand<IWhyShare>(OpenUrl, CanOpenUrl);
+            OpenShortUrlCommand = new DelegateCommand<IWhyShare>(OpenShortUrl, CanOpenShortUrl);
             CancelUploadCommand = new DelegateCommand<IWhyShare>(CancelUpload, CanCancelUpload);
             DeleteObjectCommand = new DelegateCommand<IWhyShare>(DeleteUpload, CanDeleteUpload);
             ExitCommand = new DelegateCommand<Window>(ExitApp, CanExitApp);
 
             S3Objects = new ObservableCollection<IWhyShare>();
             S3Objects.CollectionChanged += S3Objects_CollectionChanged;
+        }
+
+        private bool CanOpenShortUrl(IWhyShare arg)
+        {
+            var result = false;
+
+            if (arg != null)
+            {
+                result = arg.Process == 100;
+            }
+
+            return result;
+        }
+
+        private void OpenShortUrl(IWhyShare obj)
+        {
+            var url = obj.ShortUrl;
+            try
+            {
+                Clipboard.SetText(url);
+                MessageBox.Show("Link er kopieret til udklipsholder");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Der er sket en fejl...");
+            }
         }
 
         private void DeleteUpload(IWhyShare obj)
@@ -83,7 +118,7 @@ namespace WhyShare.ViewModels
 
         private void OpenUrl(IWhyShare obj)
         {
-            var url = obj.GetUrl;
+            var url = obj.Url;
             System.Diagnostics.Process.Start(url);
         }
 
@@ -117,9 +152,9 @@ namespace WhyShare.ViewModels
             }
         }
 
-        public void Add(IWhyShare awsProvider)
+        public void Add(string file)
         {
-            S3Objects.Add(awsProvider);
+            S3Objects.Add(new AwsProvider() { FileName = file, ShortUrlProvider = _shortProvider });
         }
 
         public IWhyShare SelectedItem

@@ -1,5 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace WhyShare.Infrastructure.Interfaces
 {
@@ -8,7 +7,9 @@ namespace WhyShare.Infrastructure.Interfaces
         int Process { get; set; }
         string Status { get; set; }
         string FileName { get; set; }
-        string GetUrl { get; }
+        IShortProvider ShortUrlProvider { get; set; }
+        string Url { get; }
+        string ShortUrl { get; }
         bool Delete();
         Task Start();
         void Dispose();
