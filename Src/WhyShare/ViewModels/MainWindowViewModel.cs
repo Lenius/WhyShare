@@ -113,7 +113,14 @@ namespace WhyShare.ViewModels
 
         private bool CanOpenUrl(IWhyShare arg)
         {
-            return SelectedItem != null;
+            var result = false;
+
+            if (arg != null)
+            {
+                result = arg.Process == 100;
+            }
+
+            return result;
         }
 
         private void OpenUrl(IWhyShare obj)

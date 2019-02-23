@@ -10,7 +10,6 @@ using System.Web;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using System.Windows.Threading;
 using DeviceId;
 using Prism.Mvvm;
 using WhyShare.Infrastructure.Interfaces;
@@ -42,8 +41,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
                 .AddMotherboardSerialNumber()
                 .ToString();
 
-            _backgroundWorker = new BackgroundWorker();
-            _backgroundWorker.WorkerReportsProgress = true;
+            _backgroundWorker = new BackgroundWorker { WorkerReportsProgress = true };
             _backgroundWorker.DoWork += Bw_DoWork;
         }
 
@@ -51,18 +49,11 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             var file = new FileInfo(FileName);
             FileSize = Tools.SizeToHuman(file.Length);
-            Status = "Uploading";
 
-            var transferUtilityConfig = new TransferUtilityConfig
-            {
-                ConcurrentServiceRequests = 5,
-                MinSizeBeforePartUpload = 20 * 1024,
-            };
+            Status = "Uploading";
 
             using (var fileTransferUtility = new TransferUtility(_client))
             {
-                fileTransferUtility.UploadAsync(file.FullName, _awsbucket);
-
                 var uploadRequest =
                     new TransferUtilityUploadRequest
                     {
@@ -72,6 +63,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
                         CannedACL = S3CannedACL.Private,
                         ContentType = MimeMapping.GetMimeMapping(file.Name),
                         StorageClass = S3StorageClass.Standard,
+                        AutoCloseStream = true,
                         TagSet = new List<Tag>()
                         {
                             new Tag()
@@ -144,7 +136,7 @@ namespace WhyShare.Infrastructure.Provider.Aws
             {
                 var file = new FileInfo(FileName);
 
-                GetPreSignedUrlRequest requestOrg = new GetPreSignedUrlRequest
+                var requestOrg = new GetPreSignedUrlRequest
                 {
                     BucketName = _awsbucket,
                     Key = $"{_prefix}/{file.Name}",
@@ -159,19 +151,18 @@ namespace WhyShare.Infrastructure.Provider.Aws
         {
             get
             {
-                if (_shortUrl == null)
+                if (_shortUrl != null) return _shortUrl;
+
+                var file = new FileInfo(FileName);
+
+                var requestOrg = new GetPreSignedUrlRequest
                 {
-                    var file = new FileInfo(FileName);
+                    BucketName = _awsbucket,
+                    Key = $"{_prefix}/{file.Name}",
+                    Expires = DateTime.Now.AddMinutes(60 * 24)
+                };
 
-                    GetPreSignedUrlRequest requestOrg = new GetPreSignedUrlRequest
-                    {
-                        BucketName = _awsbucket,
-                        Key = $"{_prefix}/{file.Name}",
-                        Expires = DateTime.Now.AddMinutes(60 * 24)
-                    };
-
-                    _shortUrl = ShortUrlProvider.Url(_client.GetPreSignedURL(requestOrg));
-                }
+                _shortUrl = ShortUrlProvider.Url(_client.GetPreSignedURL(requestOrg));
 
                 return _shortUrl;
             }
